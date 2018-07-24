@@ -11,7 +11,7 @@
   },
   "autoload": {
     "psr-4": {
-      "byTorsten\\React\\macOSRenderer": "Classes/"
+      "byTorsten\\React\\macOSRenderer\\": "Classes/"
     }
   },
   "extra": {
