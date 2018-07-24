@@ -1,0 +1,22 @@
+{
+  "description": "react renderer for macOS",
+  "type": "neos-react",
+  "name": "bytorsten/react-macosrenderer",
+  "require": {
+    "byTorsten/React": "*",
+    "react/child-process": "^0.5.2"
+  },
+  "provide": {
+    "byTorsten/react-rendererimplementation": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "byTorsten\\React\\macOSRenderer": "Classes/"
+    }
+  },
+  "extra": {
+    "neos": {
+      "package-key": "byTorsten.React.macOSRenderer"
+    }
+  }
+}

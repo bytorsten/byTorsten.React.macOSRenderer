@@ -1,0 +1,11 @@
+byTorsten:
+  React:
+    macOSRenderer:
+      path: 'resource://byTorsten.React.macOSRenderer/Private/bin/react-renderer-macos'
+      #path: 'resource://byTorsten.React/Private/Renderer/build/index.js'
+      keepAlive: true
+      pipes:
+        stdout: 'renderer_stdout'
+        stderr: 'renderer_stderr'
+      processTimeout: 2.0
+      socketTimeout: 30.0
