@@ -199,4 +199,12 @@ class Process extends AbstractBaseProcess implements ProcessInterface
     {
         return $this->readyDeferred->promise();
     }
+
+    /**
+     * @return bool
+     */
+    public function keepAlive(): bool
+    {
+        return $this->configuration['keepAlive'];
+    }
 }

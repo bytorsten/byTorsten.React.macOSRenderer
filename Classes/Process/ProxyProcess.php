@@ -94,4 +94,12 @@ class ProxyProcess extends AbstractBaseProcess implements ProxyProcessInterface
     {
         return new FulfilledPromise();
     }
+
+    /**
+     * @return bool
+     */
+    public function keepAlive(): bool
+    {
+        return true;
+    }
 }
