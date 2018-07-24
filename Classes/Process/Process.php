@@ -1,15 +1,14 @@
 <?php
 namespace byTorsten\React\macOSRenderer\Process;
 
-use byTorsten\React\Core\Service\FilePathResolver;
 use Neos\Flow\Annotations as Flow;
-use Neos\Flow\Utility\Algorithms;
 use Neos\Utility\Files;
 use React\ChildProcess\Process as ChildProcess;
 use React\EventLoop\LoopInterface;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
 use React\Stream\ReadableResourceStream;
+use byTorsten\React\Core\Service\FilePathResolver;
 use byTorsten\React\Core\IPC\Process\ProcessException;
 use byTorsten\React\Core\IPC\Process\AbstractBaseProcess;
 use byTorsten\React\Core\IPC\Process\ProcessInterface;
@@ -45,11 +44,6 @@ class Process extends AbstractBaseProcess implements ProcessInterface
     /**
      * @var array
      */
-    protected $pipeNames;
-
-    /**
-     * @var array
-     */
     protected $parameter;
 
     /**
@@ -68,16 +62,17 @@ class Process extends AbstractBaseProcess implements ProcessInterface
     protected function buildCmd(): string
     {
         $filePathResolver = new FilePathResolver();
+        $parameters = array_merge($this->parameter, ['socket' => $this->getSocketPath()]);
         $scriptPath = $filePathResolver->resolveFilePath($this->configuration['path']);
-        return 'exec ' . $scriptPath . array_reduce(array_keys($this->parameter), function (string $parameters, string $name) {
-                $value = $this->parameter[$name];
+        return 'exec ' . $scriptPath . array_reduce(array_keys($parameters), function (string $joinedParameters, string $name) use ($parameters) {
+                $value = $parameters[$name];
                 if ($value === true) {
-                    $parameters .= ' --' . $name;
+                    $joinedParameters .= ' --' . $name;
                 } else if ($value !== false) {
-                    $parameters .= ' --' . $name . ' ' . $value;
+                    $joinedParameters .= ' --' . $name . ' ' . $value;
                 }
 
-                return $parameters;
+                return $joinedParameters;
             }, '');
     }
 
@@ -89,13 +84,6 @@ class Process extends AbstractBaseProcess implements ProcessInterface
         return $this->process ? $this->process->getPid() : null;
     }
 
-    /**
-     * @return array
-     */
-    public function getPipeNames(): array
-    {
-        return $this->pipeNames;
-    }
 
     /**
      * @param LoopInterface $loop
@@ -103,25 +91,32 @@ class Process extends AbstractBaseProcess implements ProcessInterface
      */
     public function start(LoopInterface $loop): void
     {
-        ['pipes' => $pipes, 'processTimeout' => $processTimeout] = $this->configuration;
+        ['tempPath' => $tempPath, 'processTimeout' => $processTimeout] = $this->configuration;
 
-        $hash = Algorithms::generateRandomString(8);
+        Files::createDirectoryRecursively($tempPath);
 
-        $this->pipeNames = [
-            'stdout' => Files::concatenatePaths([sys_get_temp_dir(), $pipes['stdout'] . '_' . $hash]),
-            'stderr' => Files::concatenatePaths([sys_get_temp_dir(), $pipes['stderr'] . '_' . $hash])
+        $hash = md5(getmypid());
+
+        $this->pipePaths = [
+            'stdout' => Files::concatenatePaths([$tempPath, 'renderer_stdout_' . $hash]),
+            'stderr' => Files::concatenatePaths([$tempPath, 'renderer_stderr_' . $hash])
         ];
 
-        foreach ($this->pipeNames as $key => $path) {
+        $this->socketPath = Files::concatenatePaths([$tempPath, 'socket_' . $hash . '.sock']);
+        @unlink($this->socketPath);
+
+        foreach ($this->pipePaths as $key => $path) {
+            @unlink($path);
+
             if (posix_mkfifo($path, 0600) === false) {
                 throw new ProcessException(sprintf('Could not create named %s pipe "%s"', $key, $path));
             }
         }
 
-        $this->stdout = new ReadableResourceStream(fopen($this->pipeNames['stdout'], 'rn'), $loop);
-        $this->stderr = new ReadableResourceStream(fopen($this->pipeNames['stderr'], 'rn'), $loop);
+        $this->stdout = new ReadableResourceStream(fopen($this->pipePaths['stdout'], 'rn'), $loop);
+        $this->stderr = new ReadableResourceStream(fopen($this->pipePaths['stderr'], 'rn'), $loop);
 
-        $cmd = $this->buildCmd() . ' 2>' . $this->pipeNames['stderr'] . ' >' . $this->pipeNames['stdout'];
+        $cmd = $this->buildCmd() . ' 2>' . $this->pipePaths['stderr'] . ' >' . $this->pipePaths['stdout'];
 
         $process = new ChildProcess($cmd);
         $process->start($loop);
@@ -157,8 +152,8 @@ class Process extends AbstractBaseProcess implements ProcessInterface
         });
 
         $process->on('exit', function (int $exitCode = null) use (&$errors, $loop, $startupTimer) {
-            @unlink($this->pipeNames['stdout']);
-            @unlink($this->pipeNames['stderr']);
+            @unlink($this->pipePaths['stdout']);
+            @unlink($this->pipePaths['stderr']);
 
             if ($startupTimer !== null) {
                 $loop->cancelTimer($startupTimer);
@@ -182,6 +177,16 @@ class Process extends AbstractBaseProcess implements ProcessInterface
     {
         if ($this->process instanceof ChildProcess) {
             $this->process->terminate($force ? static::SIGKILL : null);
+        }
+
+        if ($this->socketPath !== null) {
+            @unlink($this->socketPath);
+        }
+
+        if ($this->pipePaths !== null) {
+            foreach ($this->pipePaths as $path) {
+                @unlink($path);
+            }
         }
     }
 

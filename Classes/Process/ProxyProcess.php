@@ -1,11 +1,11 @@
 <?php
 namespace byTorsten\React\macOSRenderer\Process;
 
-use byTorsten\React\Core\IPC\Process\ProxyProcessInterface;
 use React\EventLoop\LoopInterface;
 use React\Promise\ExtendedPromiseInterface;
 use React\Promise\FulfilledPromise;
 use React\Stream\ReadableResourceStream;
+use byTorsten\React\Core\IPC\Process\ProxyProcessInterface;
 use byTorsten\React\Core\IPC\Process\AbstractBaseProcess;
 
 class ProxyProcess extends AbstractBaseProcess implements ProxyProcessInterface
@@ -26,18 +26,15 @@ class ProxyProcess extends AbstractBaseProcess implements ProxyProcessInterface
     protected $stderr;
 
     /**
-     * @var array
-     */
-    protected $pipeNames;
-
-    /**
      * @param int $pid
-     * @param array $pipeNames
+     * @param array $pipePaths
+     * @param string $socketPath
      */
-    public function __construct(int $pid, array $pipeNames)
+    public function __construct(int $pid, array $pipePaths, string $socketPath)
     {
         $this->pid = $pid;
-        $this->pipeNames = $pipeNames;
+        $this->pipePaths = $pipePaths;
+        $this->socketPath = $socketPath;
     }
 
     /**
@@ -45,8 +42,8 @@ class ProxyProcess extends AbstractBaseProcess implements ProxyProcessInterface
      */
     public function start(LoopInterface $loop): void
     {
-        $this->stdout = new ReadableResourceStream(fopen($this->pipeNames['stdout'], 'rn'), $loop);
-        $this->stderr = new ReadableResourceStream(fopen($this->pipeNames['stderr'], 'rn'), $loop);
+        $this->stdout = new ReadableResourceStream(fopen($this->pipePaths['stdout'], 'rn'), $loop);
+        $this->stderr = new ReadableResourceStream(fopen($this->pipePaths['stderr'], 'rn'), $loop);
 
         $this->stdout->on('data', function ($chunk) {
             if (strpos($chunk, static::READY_FLAG) === false) {
@@ -68,9 +65,10 @@ class ProxyProcess extends AbstractBaseProcess implements ProxyProcessInterface
     public function stop(bool $force = false): void
     {
         $this->detach();
-        @unlink($this->pipeNames['stdout']);
-        @unlink($this->pipeNames['stderr']);
         @posix_kill($this->pid, $force ? Process::SIGTERM : Process::SIGKILL);
+        @unlink($this->pipePaths['stdout']);
+        @unlink($this->pipePaths['stderr']);
+        @unlink($this->socketPath);
     }
 
     /**
