@@ -69,9 +69,16 @@ class Process extends AbstractBaseProcess implements ProcessInterface
     {
         $filePathResolver = new FilePathResolver();
         $scriptPath = $filePathResolver->resolveFilePath($this->configuration['path']);
-        return 'exec ' . $scriptPath . ' ' . implode(' ', array_map(function ($value, $name) {
-                return '--' . $name . ($value !== true ? ' ' . $value : '');
-            }, $this->parameter, array_keys($this->parameter)));
+        return 'exec ' . $scriptPath . array_reduce(array_keys($this->parameter), function (string $parameters, string $name) {
+                $value = $this->parameter[$name];
+                if ($value === true) {
+                    $parameters .= ' --' . $name;
+                } else if ($value !== false) {
+                    $parameters .= ' --' . $name . ' ' . $value;
+                }
+
+                return $parameters;
+            }, '');
     }
 
     /**
