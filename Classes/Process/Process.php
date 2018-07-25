@@ -65,15 +65,15 @@ class Process extends AbstractBaseProcess implements ProcessInterface
         $parameters = array_merge($this->parameter, ['socket' => $this->getSocketPath()]);
         $scriptPath = $filePathResolver->resolveFilePath($this->configuration['path']);
         return 'exec ' . $scriptPath . array_reduce(array_keys($parameters), function (string $joinedParameters, string $name) use ($parameters) {
-                $value = $parameters[$name];
-                if ($value === true) {
-                    $joinedParameters .= ' --' . $name;
-                } else if ($value !== false) {
-                    $joinedParameters .= ' --' . $name . ' ' . $value;
-                }
+            $value = $parameters[$name];
+            if ($value === true) {
+                $joinedParameters .= ' --' . $name;
+            } else if ($value !== false) {
+                $joinedParameters .= ' --' . $name . ' ' . $value;
+            }
 
-                return $joinedParameters;
-            }, '');
+            return $joinedParameters;
+        }, '');
     }
 
     /**
