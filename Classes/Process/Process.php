@@ -47,11 +47,17 @@ class Process extends AbstractBaseProcess implements ProcessInterface
     protected $parameter;
 
     /**
-     * Process constructor.
+     * @var string
+     */
+    protected $identifier;
+
+    /**
+     * @param string $identifier
      * @param array $parameter
      */
-    public function __construct(array $parameter = [])
+    public function __construct(string $identifier, array $parameter = [])
     {
+        $this->identifier = $identifier;
         $this->parameter = $parameter;
         $this->readyDeferred = new Deferred();
     }
@@ -62,7 +68,7 @@ class Process extends AbstractBaseProcess implements ProcessInterface
     protected function buildCmd(): string
     {
         $filePathResolver = new FilePathResolver();
-        $parameters = array_merge($this->parameter, ['socket' => $this->getSocketPath()]);
+        $parameters = array_merge($this->parameter, ['address' => $this->getAddress(), 'threads' => $this->configuration['threads']]);
         $scriptPath = $filePathResolver->resolveFilePath($this->configuration['path']);
         return 'exec ' . $scriptPath . array_reduce(array_keys($parameters), function (string $joinedParameters, string $name) use ($parameters) {
             $value = $parameters[$name];
@@ -95,15 +101,13 @@ class Process extends AbstractBaseProcess implements ProcessInterface
 
         Files::createDirectoryRecursively($tempPath);
 
-        $hash = md5(getmypid());
-
         $this->pipePaths = [
-            'stdout' => Files::concatenatePaths([$tempPath, 'renderer_stdout_' . $hash]),
-            'stderr' => Files::concatenatePaths([$tempPath, 'renderer_stderr_' . $hash])
+            'stdout' => Files::concatenatePaths([$tempPath, 'renderer_stdout_' . $this->identifier]),
+            'stderr' => Files::concatenatePaths([$tempPath, 'renderer_stderr_' . $this->identifier])
         ];
 
-        $this->socketPath = Files::concatenatePaths([$tempPath, 'socket_' . $hash . '.sock']);
-        @unlink($this->socketPath);
+        $this->address = 'unix://' . Files::concatenatePaths([$tempPath, 'socket_' . $this->identifier . '.sock']);
+        @unlink($this->address);
 
         foreach ($this->pipePaths as $key => $path) {
             @unlink($path);
@@ -176,11 +180,16 @@ class Process extends AbstractBaseProcess implements ProcessInterface
     public function stop(bool $force = false): void
     {
         if ($this->process instanceof ChildProcess) {
-            $this->process->terminate($force ? static::SIGKILL : null);
+            $pid = $this->getPid();
+
+            $this->process->terminate($force === true ? static::SIGKILL : null);
+            $this->process = null;
+
+            $this->logger->warning(sprintf('Renderer process (%s) %sterminated', $pid, $force ? 'forcefully ' :''));
         }
 
-        if ($this->socketPath !== null) {
-            @unlink($this->socketPath);
+        if ($this->address !== null) {
+            @unlink($this->address);
         }
 
         if ($this->pipePaths !== null) {

@@ -1,8 +1,10 @@
 byTorsten:
   React:
     macOSRenderer:
-      path: 'resource://byTorsten.React.macOSRenderer/Private/bin/react-renderer-macos'
+      #path: 'resource://byTorsten.React.macOSRenderer/Private/bin/react-renderer-macos'
+      path: 'resource://byTorsten.React/Private/Renderer/build/index.js'
       keepAlive: true
       tempPath: '%FLOW_PATH_DATA%React'
       processTimeout: 2.0
       socketTimeout: 30.0
+      threads: 4

@@ -28,13 +28,13 @@ class ProxyProcess extends AbstractBaseProcess implements ProxyProcessInterface
     /**
      * @param int $pid
      * @param array $pipePaths
-     * @param string $socketPath
+     * @param string $address
      */
-    public function __construct(int $pid, array $pipePaths, string $socketPath)
+    public function __construct(int $pid, array $pipePaths, string $address)
     {
         $this->pid = $pid;
         $this->pipePaths = $pipePaths;
-        $this->socketPath = $socketPath;
+        $this->address = $address;
     }
 
     /**
@@ -68,7 +68,7 @@ class ProxyProcess extends AbstractBaseProcess implements ProxyProcessInterface
         @posix_kill($this->pid, $force ? Process::SIGTERM : Process::SIGKILL);
         @unlink($this->pipePaths['stdout']);
         @unlink($this->pipePaths['stderr']);
-        @unlink($this->socketPath);
+        @unlink($this->address);
     }
 
     /**
