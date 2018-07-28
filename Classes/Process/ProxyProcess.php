@@ -100,4 +100,13 @@ class ProxyProcess extends AbstractBaseProcess implements ProxyProcessInterface
     {
         return true;
     }
+
+    /**
+     * @return bool
+     */
+    public function isAlive(): bool
+    {
+        return posix_getpgid($this->pid) !== false;
+    }
+
 }
