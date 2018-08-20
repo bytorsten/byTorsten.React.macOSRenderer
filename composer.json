@@ -10,7 +10,7 @@
   ],
   "license": "MIT",
   "require": {
-    "byTorsten/React": "*",
+    "byTorsten/React": "~0.1.0",
     "react/child-process": "^0.5.2"
   },
   "provide": {
