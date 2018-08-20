@@ -6,4 +6,4 @@ byTorsten:
       tempPath: '%FLOW_PATH_DATA%React'
       processTimeout: 10.0
       socketTimeout: 30.0
-      threads: 4
+      threads: 1
